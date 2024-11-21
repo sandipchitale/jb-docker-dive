@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.sandipchitale"
-version = "0.0.4"
+version = "0.0.7"
 
 repositories {
     mavenCentral()
@@ -35,7 +35,6 @@ tasks {
             ideDir = file("${project.extra["runIde_ideDir"]}")
         }
     }
-
 
     prepareSandbox {
         from("${projectDir}/dive/") {

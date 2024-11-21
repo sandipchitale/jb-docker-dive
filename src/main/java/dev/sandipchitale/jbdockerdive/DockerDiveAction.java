@@ -12,7 +12,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.plugins.terminal.ShellTerminalWidget;
 import org.jetbrains.plugins.terminal.TerminalToolWindowManager;
 
+import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.regex.Matcher;
@@ -20,6 +22,7 @@ import java.util.regex.Pattern;
 
 public class DockerDiveAction extends AnAction {
     private static String DIVE = "dive";
+
     static {
         String pluginPath = Objects.requireNonNull(PluginManagerCore.getPlugin(PluginId.getId("dev.sandipchitale.jb-docker-dive"))).getPluginPath().toFile().getAbsolutePath();
         if (SystemInfo.isLinux) {
@@ -35,7 +38,7 @@ public class DockerDiveAction extends AnAction {
                     pluginPath,
                     "dive",
                     "darwin",
-                    "amd64",
+                    "arm64",
                     "dive"
             ).toString();
         } else if (SystemInfo.isWindows) {
@@ -49,27 +52,47 @@ public class DockerDiveAction extends AnAction {
         }
     }
 
-    private static final Pattern tagPattern = Pattern.compile(".+ \\[IMG]: \\[([^\\s]+)]");
+    static {
+        if (SystemInfo.isLinux || SystemInfo.isMac) {
+            try {
+                boolean executable = new File(DIVE).setExecutable(true);
+            } catch (RuntimeException ignore) {
+            }
+        }
+    }
+
+    private static final Pattern tagPattern = Pattern.compile(".+ \\[IMG]: \\[(\\S+)]");
 
     @Override
     public void actionPerformed(@NotNull AnActionEvent actionEvent) {
         Project project = actionEvent.getProject();
         Object data = actionEvent.getDataContext().getData(PlatformCoreDataKeys.SELECTED_ITEM);
-        if (data != null && (data.getClass().getName().equals("com.intellij.docker.runtimes.DockerImageRuntimeImpl"))) {
+        String imageId = null;
+        if (data != null) {
             String dataString = data.toString();
-            Matcher matcher = tagPattern.matcher(dataString);
-            if (matcher.matches()) {
-                @NotNull ShellTerminalWidget shellTerminalWidget =
-                        TerminalToolWindowManager.getInstance(Objects.requireNonNull(project)).createLocalShellWidget(project.getBasePath(),
-                                "Dive",
-                                true,
-                                true);
-                try {
-                    shellTerminalWidget.executeCommand(String.format("%s %s",
-                            DIVE,
-                            matcher.group(1)));
-                } catch (IOException ignore) {
+            if (data.getClass().getName().equals("com.intellij.docker.runtimes.DockerImageRuntimeImpl")) {
+                Matcher matcher = tagPattern.matcher(dataString);
+                if (matcher.matches()) {
+                    imageId = matcher.group(1);
                 }
+            } else if (data.getClass().getName().equals("com.intellij.docker.runtimes.DockerApplicationRuntime")) {
+                try {
+                    imageId = (String) data.getClass().getMethod("getImageId").invoke(data);
+                } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException ignore) {
+                }
+            }
+        }
+        if (imageId != null) {
+            @NotNull ShellTerminalWidget shellTerminalWidget =
+                    TerminalToolWindowManager.getInstance(Objects.requireNonNull(project)).createLocalShellWidget(project.getBasePath(),
+                            "Dive",
+                            true,
+                            true);
+            try {
+                shellTerminalWidget.executeCommand(String.format("\"%s\" \"%s\"",
+                        DIVE,
+                        imageId));
+            } catch (IOException ignore) {
             }
         }
     }
@@ -78,7 +101,8 @@ public class DockerDiveAction extends AnAction {
     public void update(@NotNull AnActionEvent actionEvent) {
         boolean visible = false;
         Object data = actionEvent.getDataContext().getData(PlatformCoreDataKeys.SELECTED_ITEM);
-        if (data != null && (data.getClass().getName().equals("com.intellij.docker.runtimes.DockerImageRuntimeImpl"))) {
+        if (data != null && (data.getClass().getName().equals("com.intellij.docker.runtimes.DockerImageRuntimeImpl") ||
+                data.getClass().getName().equals("com.intellij.docker.runtimes.DockerApplicationRuntime"))) {
             visible = true;
         }
         actionEvent.getPresentation().setVisible(visible);

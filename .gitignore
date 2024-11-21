@@ -24,7 +24,6 @@ out/
 .settings
 .springBeans
 .sts4-cache
-dive/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 
