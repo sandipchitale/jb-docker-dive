@@ -21,10 +21,10 @@ import java.util.regex.Pattern;
 public class DockerDiveAction extends AnAction {
     private static String DIVE = "dive";
     static {
-        String projectPath = Objects.requireNonNull(PluginManagerCore.getPlugin(PluginId.getId("dev.sandipchitale.jb-docker-dive"))).getPluginPath().toFile().getAbsolutePath();
+        String pluginPath = Objects.requireNonNull(PluginManagerCore.getPlugin(PluginId.getId("dev.sandipchitale.jb-docker-dive"))).getPluginPath().toFile().getAbsolutePath();
         if (SystemInfo.isLinux) {
             DIVE = Path.of(
-                    projectPath,
+                    pluginPath,
                     "dive",
                     "linux",
                     "amd64",
@@ -32,7 +32,7 @@ public class DockerDiveAction extends AnAction {
             ).toString();
         } else if (SystemInfo.isMac) {
             DIVE = Path.of(
-                    projectPath,
+                    pluginPath,
                     "dive",
                     "darwin",
                     "amd64",
@@ -40,7 +40,7 @@ public class DockerDiveAction extends AnAction {
             ).toString();
         } else if (SystemInfo.isWindows) {
             DIVE = Path.of(
-                    projectPath,
+                    pluginPath,
                     "dive",
                     "windows",
                     "amd64",
@@ -49,14 +49,15 @@ public class DockerDiveAction extends AnAction {
         }
     }
 
-    private static final Pattern tagPattern = Pattern.compile("data = .+ id: .+ \\[IMG]: \\[([^\\s]+)]");
+    private static final Pattern tagPattern = Pattern.compile(".+ \\[IMG]: \\[([^\\s]+)]");
 
     @Override
     public void actionPerformed(@NotNull AnActionEvent actionEvent) {
         Project project = actionEvent.getProject();
         Object data = actionEvent.getDataContext().getData(PlatformCoreDataKeys.SELECTED_ITEM);
         if (data != null && (data.getClass().getName().equals("com.intellij.docker.runtimes.DockerImageRuntimeImpl"))) {
-            Matcher matcher = tagPattern.matcher(data.toString());
+            String dataString = data.toString();
+            Matcher matcher = tagPattern.matcher(dataString);
             if (matcher.matches()) {
                 @NotNull ShellTerminalWidget shellTerminalWidget =
                         TerminalToolWindowManager.getInstance(Objects.requireNonNull(project)).createLocalShellWidget(project.getBasePath(),
