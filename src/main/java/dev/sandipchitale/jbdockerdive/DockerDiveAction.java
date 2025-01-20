@@ -8,12 +8,11 @@ import com.intellij.openapi.actionSystem.PlatformCoreDataKeys;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.SystemInfo;
+import com.intellij.terminal.ui.TerminalWidget;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.plugins.terminal.ShellTerminalWidget;
 import org.jetbrains.plugins.terminal.TerminalToolWindowManager;
 
 import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -83,17 +82,14 @@ public class DockerDiveAction extends AnAction {
             }
         }
         if (imageId != null) {
-            @NotNull ShellTerminalWidget shellTerminalWidget =
-                    TerminalToolWindowManager.getInstance(Objects.requireNonNull(project)).createLocalShellWidget(project.getBasePath(),
+            @NotNull TerminalWidget shellTerminalWidget =
+                    TerminalToolWindowManager.getInstance(Objects.requireNonNull(project)).createShellWidget(project.getBasePath(),
                             "Dive",
                             true,
                             true);
-            try {
-                shellTerminalWidget.executeCommand(String.format("\"%s\" \"%s\"",
-                        DIVE,
-                        imageId));
-            } catch (IOException ignore) {
-            }
+            shellTerminalWidget.sendCommandToExecute(String.format("\"%s\" \"%s\"",
+                    DIVE,
+                    imageId));
         }
     }
 
